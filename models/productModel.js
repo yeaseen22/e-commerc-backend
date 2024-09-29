@@ -43,7 +43,7 @@ const productSchema = new mongoose.Schema(
         url: String,
       },
     ],
-    color: [],
+    color: [{type:mongoose.Schema.Types.ObjectId, ref: "Color"}],
     tags: String,
     ratings: [
       {
