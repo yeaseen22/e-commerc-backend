@@ -238,9 +238,9 @@ const unBlockUser = asyncHandler(async (req, res) => {
 
 // #region update password
 const updatePassowrd = asyncHandler(async (req, res) => {
-  const { _id }  = req.user;
+  const { _id } = req.user;
   const { password } = req.body;
-  console.log('user id',_id)
+  console.log("user id", _id);
   validateMongoDbId(_id);
   const user = await User.findById(_id);
   if (password) {
@@ -256,7 +256,7 @@ const updatePassowrd = asyncHandler(async (req, res) => {
 const forgotPasswordToken = asyncHandler(async (req, res) => {
   const { email } = req.body;
   console.log(email);
-  
+
   const user = await User.findOne({ email });
   if (!user) throw new Error("User not found with this email");
   try {
@@ -270,8 +270,8 @@ const forgotPasswordToken = asyncHandler(async (req, res) => {
       html: resetURL,
     };
     // console.log('user token',token)
-    console.log(data.to, 'and', data.text);
-    
+    console.log(data.to, "and", data.text);
+
     await sendEmail(data);
     res.json(token);
   } catch (error) {
@@ -309,7 +309,7 @@ const getWishlist = asyncHandler(async (req, res) => {
 
 // #region userCart
 const userCart = asyncHandler(async (req, res) => {
-  const { productId,color,quantity,price } = req.body;
+  const { productId, color, quantity, price } = req.body;
   const { _id } = req.user;
   validateMongoDbId(_id);
   try {
@@ -333,14 +333,12 @@ const userCart = asyncHandler(async (req, res) => {
     //   cartTotal = cartTotal += products[i].price * products[i].count;
     // }
 
-
-
     let newCart = await new Cart({
       userId: _id,
       productId,
       color,
       price,
-      quantity
+      quantity,
     }).save();
     res.json(newCart);
   } catch (error) {
@@ -353,9 +351,9 @@ const getUserCart = asyncHandler(async (req, res) => {
   const { _id } = req.user;
   validateMongoDbId(_id);
   try {
-    const cart = await Cart.find({ userId: _id }).pupulate(
-      "productId"
-    ).populate("color");
+    const cart = await Cart.find({ userId: _id })
+      .pupulate("productId")
+      .populate("color");
     res.json(cart);
   } catch (error) {
     throw new Error(error);
@@ -370,6 +368,42 @@ const emptyCart = asyncHandler(async (req, res) => {
     const user = await User.findOne({ _id });
     const cart = await Cart.findOneAndRemove({ orderBy: user._id });
     res.json(cart);
+  } catch (error) {
+    throw new Error(error);
+  }
+});
+
+// #region remove cart
+const removeProductFromCart = asyncHandler(async (req, res) => {
+  const { _id } = req.user;
+  const { cardItemId } = req.params;
+  validateMongoDbId(_id);
+
+  try {
+    const deleteProductFormCart = await Cart.deleteOne({
+      userId: _id,
+      _id: cardItemId,
+    });
+    res.json(deleteProductFormCart);
+  } catch (error) {
+    throw new Error(error);
+  }
+});
+
+//#region update product cart quantity
+const updateProductQuantityFormCart = asyncHandler(async (req, res) => {
+  const { _id } = req.user;
+  const { cardItemId,newQuantity } = req.params;
+  validateMongoDbId(_id);
+
+  try {
+    const cartItem = await Cart.findOne({
+      userId: _id,
+      _id: cardItemId,
+    });
+    cartItem?.quantity = newQuantity;
+    cartItem.save();
+    res.json(cartItem);
   } catch (error) {
     throw new Error(error);
   }
@@ -444,7 +478,6 @@ const createOrder = asyncHandler(async (req, res) => {
   }
 });
 
-
 // region get user orders
 const getOrders = asyncHandler(async (req, res) => {
   const { _id } = req.user;
@@ -460,7 +493,7 @@ const getOrders = asyncHandler(async (req, res) => {
   }
 });
 
-// 
+//
 const getAllOrders = asyncHandler(async (req, res) => {
   try {
     const alluserorders = await Order.find()
@@ -536,4 +569,6 @@ module.exports = {
   updateOrderStatus,
   getAllOrders,
   getOrderByUserId,
+  removeProductFromCart,
+  updateProductQuantityFormCart
 };
