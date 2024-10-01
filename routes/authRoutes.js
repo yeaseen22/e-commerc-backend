@@ -30,6 +30,7 @@ const {
   updateProductQuantityFormCart
 } = require("../controller/userController");
 const { authMiddleware, isAdmin } = require("../middlewares/authMiddleware");
+const { checkout, paymentVerification } = require("../controller/paymentController");
 
 router.post("/register", createUser);
 router.post("/forgot-password-token", forgotPasswordToken);
@@ -38,6 +39,8 @@ router.put("/password", authMiddleware, updatePassowrd);
 router.post("/login", loginUserController);
 router.post("admin-login", loginAdmin);
 router.post("/cart", authMiddleware, userCart);
+router.post("/order/checkout", authMiddleware, checkout);
+router.post("/order/paymentVerification", authMiddleware, paymentVerification);
 // router.post("/cart/applycoupon", authMiddleware, applyCoupon);
 router.post("/cart/create-order", authMiddleware, createOrder);
 router.get("/all-users", getAllUsers);
