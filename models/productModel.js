@@ -37,13 +37,11 @@ const productSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
-    images: [
-      {
-        public_id: String,
-        url: String,
-      },
-    ],
-    color: [{type:mongoose.Schema.Types.ObjectId, ref: "Color"}],
+    images: [],
+    color: {
+      type: String,
+      required: true,
+    },
     tags: String,
     ratings: [
       {
