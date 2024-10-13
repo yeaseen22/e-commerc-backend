@@ -24,18 +24,19 @@ const {
   updateProductQuantityFormCart,
   getMyOrders,
   createCashOrder,
+  getAllOrders,
 } = require("../controller/userController");
 const { authMiddleware, isAdmin } = require("../middlewares/authMiddleware");
-// const { checkout, paymentVerification } = require("../controller/paymentController");
+const { checkout, paymentVerification } = require("../controller/paymentController");
 
 router.post("/register", createUser);
 router.post("/forgot-password-token", forgotPasswordToken);
-router.post("/reset-password/:token", resetPassword);
+router.put("/reset-password/:token", resetPassword);
 router.put("/password", authMiddleware, updatePassowrd);
 router.post("/login", loginUserController);
 router.post("/admin-login", loginAdmin);
 router.post("/cart", authMiddleware,userCart);
-// router.post("/order/checkout", authMiddleware, checkout);
+router.post("/order/checkout", authMiddleware, checkout);
 // router.post("/order/paymentVerification", authMiddleware, paymentVerification);
 // router.post("/cart/applycoupon", authMiddleware, applyCoupon);
 // router.post("/cart/create-order", authMiddleware, createOrder);
@@ -43,6 +44,8 @@ router.post("/cart/create-order", authMiddleware,createCashOrder );
 
 router.get("/all-users", getAllUsers);
 router.get('/get-orders', authMiddleware, getMyOrders);
+router.get('/get-allorders', authMiddleware, isAdmin,getAllOrders);
+
 // router.get("/get-orders", authMiddleware, getOrders);
 // router.get("/getallorders", authMiddleware, isAdmin, getAllOrders);
 // router.get("/getorderbyuser/:id", authMiddleware, isAdmin, getOrderByUserId);

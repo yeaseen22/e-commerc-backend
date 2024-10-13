@@ -9,8 +9,8 @@ const validateMongoDbId = require("../utils/validateMongodbId");
 
 // #region upload image
 const uploadImages = asyncHandler(async (req, res) => {
-  const {id} = req.params;
-  validateMongoDbId(id);
+  // const {id} = req.params;
+  // validateMongoDbId(id);
   try {
     const uploader = (path) => cloudinaryUploadImg(path, "images");
     const urls = [];

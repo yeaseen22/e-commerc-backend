@@ -10,23 +10,19 @@ const sendEmail = asyncHandler(async (data, req, res) => {
       user: process.env.MAIL_ID,
       pass: process.env.MAIL_PASSWORD,
     },
-    
   });
 
-
   // async..await is not allowed in global scope, must use a wrapper
-  async function main() {
-    // send mail with defined transport object
-    const info = await transporter.sendMail({
-      from: '"Hey 👻" <abc@.gmail>', // sender address
-      to: data.to, // list of receivers
-      subject: data.subject, // Subject line
-      text: data.text, // plain text body
-      html: data.htm, // html body
-    });
+  // send mail with defined transport object
+  const info = await transporter.sendMail({
+    from: 'devilarmaan63@gmail.com', // sender address
+    to: data.to, // list of receivers
+    subject: data.subject, // Subject line
+    text: data.text, // plain text body
+    html: data.htm, // html body
+  });
 
-    console.log("Message sent: %s", info.messageId);
-  }
+  // console.log("Message sent: %s", info.data.to);
 });
 
 module.exports = sendEmail;

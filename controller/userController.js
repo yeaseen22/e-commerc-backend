@@ -263,17 +263,17 @@ const forgotPasswordToken = asyncHandler(async (req, res) => {
   try {
     const token = await user.createPasswordResetToken();
     await user.save();
-    const resetURL = `Hi please follow this link to reset your password. This link valid till 10 minutes from now. <a href='http://localhost:4000/reset-password/${token}'>Click here</a>`;
+    const resetURL = `Hi please follow this link to reset your password. This link valid till 10 minutes from now. <a href='http://localhost:4000/api/user/reset-password/${token}'>Click here</a>`;
     const data = {
       to: email,
       text: "Hey User",
       subject: "Forgot Password Link",
-      html: resetURL,
+      htm: resetURL,
     };
     // console.log('user token',token)
     console.log(data.to, "and", data.text);
 
-    await sendEmail(data);
+    sendEmail(data);
     res.json(token);
   } catch (error) {
     throw new Error(error);
@@ -283,7 +283,7 @@ const forgotPasswordToken = asyncHandler(async (req, res) => {
 //#region Reset Password
 const resetPassword = asyncHandler(async (req, res) => {
   const { password } = req.body;
-  const token = req.params;
+  const {token} = req.params;
   const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
   const user = await User.findOne({
     passwordResetToken: hashedToken,
@@ -520,7 +520,6 @@ const updateProductQuantityFormCart = asyncHandler(async (req, res) => {
   }
 });
 
-
 const createCashOrder = asyncHandler(async (req, res) => {
   const { COD, couponApplied } = req.body;
   const userId = req.user._id; // Assuming req.user contains the authenticated user ID
@@ -646,22 +645,23 @@ const createCashOrder = asyncHandler(async (req, res) => {
 //   }
 // });
 
-
 const getMyOrders = asyncHandler(async (req, res) => {
-  const userId = req.user._id; 
-  console.log("User ID:", userId); 
+  const userId = req.user._id;
+  console.log("User ID:", userId);
   try {
     // Retrieve the user's orders, populating product details
     const orders = await Order.find({ user: userId })
-      .populate('products.product') // Populate product details
+      .populate("products.product")
+      .populate("orderby") // Populate product details
       .exec(); // Execute the query
 
-      console.log("Fetched Orders:", orders);
-      
+    console.log("Fetched Orders:", orders);
 
     // Check if any orders were found
     if (!orders || orders.length === 0) {
-      return res.status(404).json({ success: false, message: "No orders found." });
+      return res
+        .status(404)
+        .json({ success: false, message: "No orders found." });
     }
 
     // Send the orders in the response
@@ -674,6 +674,62 @@ const getMyOrders = asyncHandler(async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 });
+
+// const getAllOrders = asyncHandler(async (req, res) => {
+//   try {
+//     // Retrieve the user's orders, populating product details
+//     const allUserOrders = await Order.find()
+//       .populate("orderItems.product")
+//       .populate("orderItems.color")
+//       .populate("orderItems.orderby") // Populate user details for each product
+//       .exec();
+
+//     // Check if any orders were found
+//     if (!allUserOrders || allUserOrders.length === 0) {
+//       return res
+//         .status(404)
+//         .json({ success: false, message: "No orders found." });
+//     }
+
+//     // Send the orders in the response
+//     res.status(200).json(allUserOrders);
+//   } catch (error) {
+//     console.error("Error fetching orders:", error); // Log any errors
+//     res.status(500).json({ success: false, message: error.message });
+//   }
+// });
+
+const getAllOrders = asyncHandler(async (req, res) => {
+  try {
+    // Retrieve all orders, populating nested fields in orderItems
+    const allUserOrders = await Order.find()
+      .populate({
+        path: "orderItems",
+        populate: [
+          { path: "orderby", select: "email firstName lastName" }, // Populate orderby field
+          { path: "product", select: "title price" }, // Populate product field
+          { path: "color", select: "title" }, // Populate color field
+        ],
+      })
+      .populate("user", "firstName lastName email") // Populate the main user field
+      .lean();
+    // Check if any orders were found
+    if (!allUserOrders || allUserOrders.length === 0) {
+      return res
+        .status(404)
+        .json({ success: false, message: "No orders found." });
+    }
+
+    // Send the orders in the response
+    res.status(200).json({ success: true, orders: allUserOrders });
+  } catch (error) {
+    console.error("Error fetching orders:", error.message); // Log any errors
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to retrieve orders." });
+  }
+});
+
 
 
 // region apply coupon
@@ -841,4 +897,5 @@ module.exports = {
   updateProductQuantityFormCart,
   getMyOrders,
   createCashOrder,
+  getAllOrders,
 };
