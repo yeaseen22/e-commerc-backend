@@ -18,8 +18,8 @@ const orderSchema = new mongoose.Schema(
       pincode: { type: Number, required: true },
     },
     paymentInfo: {
-      razorpayOrderId: { type: String, required: true },
-      razorpayPaymentId: { type: String, required: true },
+      method: { type: String, required: true }, // Ensure it is a string, not ObjectId
+      transactionId: { type: String },
     },
     orderItems: [
       {

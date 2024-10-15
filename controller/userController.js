@@ -12,6 +12,7 @@ const { generateRefreshToken } = require("../config/refreshToken");
 const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
 const sendEmail = require("./emailController");
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 
 // #region Create User
 const createUser = asyncHandler(async (req, res) => {
@@ -283,7 +284,7 @@ const forgotPasswordToken = asyncHandler(async (req, res) => {
 //#region Reset Password
 const resetPassword = asyncHandler(async (req, res) => {
   const { password } = req.body;
-  const {token} = req.params;
+  const { token } = req.params;
   const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
   const user = await User.findOne({
     passwordResetToken: hashedToken,
@@ -520,58 +521,393 @@ const updateProductQuantityFormCart = asyncHandler(async (req, res) => {
   }
 });
 
-const createCashOrder = asyncHandler(async (req, res) => {
-  const { COD, couponApplied } = req.body;
-  const userId = req.user._id; // Assuming req.user contains the authenticated user ID
+// const createCashOrder = asyncHandler(async (req, res) => {
+//   const { COD, couponApplied } = req.body;
+//   const userId = req.user._id; // Assuming req.user contains the authenticated user ID
 
+//   try {
+//     // Retrieve the user's cart
+//     const cart = await Cart.findOne({ user: userId });
+//     console.log("Cart Data:", cart);
+
+//     // Check if the cart exists and contains products
+//     if (!cart || !cart.products.length) {
+//       return res
+//         .status(404)
+//         .json({ success: false, message: "Cart is empty or not found" });
+//     }
+
+//     // Calculate the total price with optional coupon discount
+//     let totalPrice = cart.cartTotal || cart.totalPrice;
+//     if (couponApplied) {
+//       totalPrice = totalPrice * 0.9; // Assuming a 10% discount for coupons
+//     }
+
+//     // Create a new order
+//     const order = await Order.create({
+//       user: userId,
+//       products: cart.products.map((item) => ({
+//         product: item.product,
+//         quantity: item.quantity,
+//         price: item.price,
+//       })),
+//       totalPrice,
+//       paymentInfo: { method: COD ? "COD" : "Online" },
+//       couponApplied: !!couponApplied,
+//       status: "Pending",
+//     });
+
+//     // Clear the cart after order creation
+//     await Cart.findOneAndUpdate(
+//       { user: userId },
+//       { products: [], totalPrice: 0, cartTotal: 0 }
+//     );
+
+//     res.status(201).json({
+//       success: true,
+//       message: "Order created successfully",
+//       order,
+//     });
+//   } catch (error) {
+//     console.error("Error creating order:", error);
+//     res.status(500).json({ success: false, message: error.message });
+//   }
+// });
+
+// const createCashOrder = asyncHandler(async (req, res) => {
+//   const { COD, couponApplied ,orderId,amount} = req.body;
+//   const userId = req.user._id; // Assuming req.user contains the authenticated user ID
+
+//   try {
+//     // Retrieve the user's cart
+//     const cart = await Cart.findOne({ user: userId });
+//     console.log("Cart Data:", cart);
+
+//     // Check if the cart exists and contains products
+//     if (!cart || !cart.products.length) {
+//       return res
+//         .status(404)
+//         .json({ success: false, message: "Cart is empty or not found" });
+//     }
+
+//     // Calculate the total price with optional coupon discount
+//     let totalPrice = cart.cartTotal || cart.totalPrice;
+//     if (couponApplied) {
+//       totalPrice = totalPrice * 0.9; // Assuming a 10% discount for coupons
+//     }
+
+//     // Create a new order with a pending status
+//     const order = await Order.create({
+//       user: userId,
+//       products: cart.products.map((item) => ({
+//         product: item.product,
+//         quantity: item.quantity,
+//         price: item.price,
+//       })),
+//       totalPrice,
+//       paymentInfo: { method: COD ? "COD" : "Online" },
+//       couponApplied: !!couponApplied,
+//       status: "Pending",
+//       _id:orderId,
+//     });
+
+//     // If payment method is bKash, initiate payment
+//     if (!COD) {
+//       const paymentResponse = await initiateBkashPayment({
+//         body: {
+//           amount: totalPrice,
+//           orderId: order._id // Use the order ID for reference
+//         },
+//       });
+
+//       if (!paymentResponse.success) {
+//         return res.status(500).json({
+//           success: false,
+//           message: "Payment initiation failed",
+//           error: paymentResponse.message,
+//         });
+//       }
+
+//       // Optionally, you can update the order with payment information here
+//       order.paymentInfo = {
+//         method: "bKash",
+//         paymentID: paymentResponse.paymentID // Save the payment ID for tracking
+//       };
+//       await order.save();
+//     }
+
+//     // Clear the cart after order creation
+//     await Cart.findOneAndUpdate(
+//       { user: userId },
+//       { products: [], totalPrice: 0, cartTotal: 0 }
+//     );
+
+//     res.status(201).json({
+//       success: true,
+//       message: "Order created successfully",
+//       order,
+//     });
+//   } catch (error) {
+//     console.error("Error creating order:", error);
+//     res.status(500).json({ success: false, message: error.message });
+//   }
+// });
+
+// const createCashOrder = asyncHandler(async (req, res) => {
+//   const { COD, couponApplied, amount, orderId } = req.body;
+//   const userId = req.user._id; // Assuming req.user contains the authenticated user ID
+
+//   try {
+//     // Here you would still want to calculate your order total based on the cart,
+//     // but for the sake of this example, we will use the amount directly provided.
+
+//     // Create a new order
+//     const order = await Order.create({
+//       user: userId,
+//       products: [], // You can fill in with cart products if applicable
+//       totalPrice: amount, // Use the amount provided in the request
+//       paymentInfo: { method: COD ? "COD" : "Online" },
+//       couponApplied: !!couponApplied,
+//       status: "Pending",
+//       _id: orderId, // Use the provided orderId
+//     });
+
+//     // If payment method is bKash and not COD, initiate payment
+//     if (!COD) {
+//       const paymentResponse = await initiateBkashPayment({
+//         body: {
+//           amount,
+//           orderId: order._id, // Use the order ID for reference
+//         },
+//       });
+
+//       if (!paymentResponse.success) {
+//         return res.status(500).json({
+//           success: false,
+//           message: "Payment initiation failed",
+//           error: paymentResponse.message,
+//         });
+//       }
+
+//       // Update the order with payment information
+//       order.paymentInfo = {
+//         method: "bKash",
+//         paymentID: paymentResponse.paymentID, // Save the payment ID for tracking
+//       };
+//       await order.save();
+//     }
+
+//     res.status(201).json({
+//       success: true,
+//       message: "Order created successfully",
+//       order,
+//     });
+//   } catch (error) {
+//     console.error("Error creating order:", error);
+//     res.status(500).json({ success: false, message: error.message });
+//   }
+// });
+
+// const createCashOrder = asyncHandler(async (req, res) => {
+//   const { COD, couponApplied, shippingInfo } = req.body; // Include shippingInfo from request body
+//   const userId = req.user._id; // Assuming req.user contains the authenticated user ID
+
+//   try {
+//     // Retrieve the user's cart
+//     const cart = await Cart.findOne({ user: userId });
+//     console.log("Cart Data:", cart);
+
+//     // Check if the cart exists and contains products
+//     if (!cart || !cart.products.length) {
+//       return res
+//         .status(404)
+//         .json({ success: false, message: "Cart is empty or not found" });
+//     }
+
+//     // Calculate the total price with optional coupon discount
+//     let totalPrice = cart.cartTotal || cart.totalPrice;
+//     if (couponApplied) {
+//       totalPrice *= 0.9; // Assuming a 10% discount for coupons
+//     }
+
+//     // Create a new order with the required shipping info
+//     const order = await Order.create({
+//       user: userId,
+//       products: cart.products.map((item) => ({
+//         product: item.product,
+//         quantity: item.quantity,
+//         price: item.price,
+//       })),
+//       totalPrice, // Make sure totalPrice is correctly calculated
+//       paymentInfo: { method: COD ? "COD" : "Online" }, // Ensure paymentInfo is structured correctly
+//       shippingInfo: {
+//         firstName: shippingInfo.firstName, // Include these fields from the request body
+//         lastName: shippingInfo.lastName,
+//         address: shippingInfo.address,
+//         city: shippingInfo.city,
+//         state: shippingInfo.state,
+//         pincode: shippingInfo.pincode,
+//         other: shippingInfo.other, // Any additional information
+//       },
+//       couponApplied: !!couponApplied,
+//       status: "Pending",
+//     });
+
+//     // Clear the cart after order creation
+//     await Cart.findOneAndUpdate(
+//       { user: userId },
+//       { products: [], totalPrice: 0, cartTotal: 0 }
+//     );
+
+//     res.status(201).json({
+//       success: true,
+//       message: "Order created successfully",
+//       order,
+//     });
+//   } catch (error) {
+//     console.error("Error creating order:", error);
+//     res.status(500).json({ success: false, message: error.message });
+//   }
+// });
+
+// const createCashOrder = asyncHandler(async (req, res) => {
+//   const { COD, couponApplied, shippingInfo } = req.body; // Include shippingInfo from request body
+//   const userId = req.user._id; // Assuming req.user contains the authenticated user ID
+
+//   try {
+//       // Retrieve the user's cart
+//       const cart = await Cart.findOne({ user: userId });
+
+//       // Check if the cart exists and contains products
+//       if (!cart || !cart.products.length) {
+//           return res.status(404).json({ success: false, message: "Cart is empty or not found" });
+//       }
+
+//       // Calculate the total price with optional coupon discount
+//       let totalPrice = cart.cartTotal || cart.totalPrice;
+//       if (couponApplied) {
+//           totalPrice *= 0.9; // Assuming a 10% discount for coupons
+//       }
+
+//       // Create a new order with the required shipping info
+//       const order = await Order.create({
+//           user: userId,
+//           products: cart.products.map((item) => ({
+//               product: item.product,
+//               quantity: item.quantity,
+//               price: item.price,
+//           })),
+//           totalPrice, // Make sure totalPrice is correctly calculated
+//           paymentInfo: { method: COD ? "COD" : "Online" }, // Ensure paymentInfo is structured correctly
+//           shippingInfo: {
+//               firstName: shippingInfo.firstName,
+//               lastName: shippingInfo.lastName,
+//               address: shippingInfo.address,
+//               city: shippingInfo.city,
+//               state: shippingInfo.state,
+//               pincode: shippingInfo.pincode,
+//               other: shippingInfo.other,
+//           },
+//           couponApplied: !!couponApplied,
+//           status: "Pending",
+//       });
+
+//       // Clear the cart after order creation
+//       await Cart.findOneAndUpdate(
+//           { user: userId },
+//           { products: [], totalPrice: 0, cartTotal: 0 }
+//       );
+
+//       res.status(201).json({
+//           success: true,
+//           message: "Order created successfully",
+//           order,
+//       });
+//   } catch (error) {
+//       console.error("Error creating order:", error);
+//       res.status(500).json({ success: false, message: error.message });
+//   }
+// });
+
+
+const createCashOrder = async (req, res) => {
   try {
-    // Retrieve the user's cart
-    const cart = await Cart.findOne({ user: userId });
-    console.log("Cart Data:", cart);
+      const { user, orderItems, totalPrice, shippingInfo } = req.body;
 
-    // Check if the cart exists and contains products
-    if (!cart || !cart.products.length) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Cart is empty or not found" });
-    }
+      // Create a new order in the database
+      const newOrder = await Order.create({
+          user,
+          orderItems,
+          shippingInfo,
+          paymentInfo: { method: "Cash on Delivery" },
+          totalPrice,
+          orderStatus: "Pending",
+      });
 
-    // Calculate the total price with optional coupon discount
-    let totalPrice = cart.cartTotal || cart.totalPrice;
-    if (couponApplied) {
-      totalPrice = totalPrice * 0.9; // Assuming a 10% discount for coupons
-    }
+      res.status(201).json({ success: true, order: newOrder });
+  } catch (error) {
+      res.status(400).json({ success: false, message: error.message });
+  }
+};
 
-    // Create a new order
-    const order = await Order.create({
-      user: userId,
-      products: cart.products.map((item) => ({
-        product: item.product,
-        quantity: item.quantity,
-        price: item.price,
-      })),
-      totalPrice,
-      paymentInfo: { method: COD ? "COD" : "Online" },
-      couponApplied: !!couponApplied,
-      status: "Pending",
+
+
+
+// const createStripePayment = async (req, res) => {
+//     try {
+//         const { user, orderItems, totalPrice, shippingInfo } = req.body;
+
+//         // Create a new payment intent with Stripe
+//         const paymentIntent = await stripe.paymentIntents.create({
+//             amount: totalPrice * 100, // Stripe uses cents
+//             currency: "usd", // or "bdt" based on your setup
+//             payment_method_types: ["card"]
+
+//         });
+
+//         // Create a new order in the database
+//         const newOrder = await Order.create({
+//             user,
+//             orderItems,
+//             shippingInfo,
+//             paymentInfo: { method: "Stripe", transactionId: paymentIntent.id },
+//             totalPrice,
+//             orderStatus: "Processing",
+//         });
+
+//         res.status(201).json({
+//             success: true,
+//             order: newOrder,
+//             clientSecret: paymentIntent.client_secret,
+//         });
+//     } catch (error) {
+//         res.status(400).json({ success: false, message: error.message });
+//     }
+// };
+
+const createStripePayment = async (req, res) => {
+  try {
+    const { amount, currency } = req.body;
+
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount,
+      currency,
+      payment_method_types: ["card"]
     });
 
-    // Clear the cart after order creation
-    await Cart.findOneAndUpdate(
-      { user: userId },
-      { products: [], totalPrice: 0, cartTotal: 0 }
-    );
-
-    res.status(201).json({
+    res.status(200).json({
       success: true,
-      message: "Order created successfully",
-      order,
+      clientSecret: paymentIntent.client_secret
     });
   } catch (error) {
-    console.error("Error creating order:", error);
-    res.status(500).json({ success: false, message: error.message });
+    res.status(400).json({
+      success: false,
+      message: "Payment initiation failed",
+      error: error.message
+    });
   }
-});
+};
+
 
 // #region getMyOrders
 // const getMyOrders = asyncHandler(async (req, res) => {
@@ -729,8 +1065,6 @@ const getAllOrders = asyncHandler(async (req, res) => {
       .json({ success: false, message: "Failed to retrieve orders." });
   }
 });
-
-
 
 // region apply coupon
 // const applyCoupon = asyncHandler(async (req, res) => {
@@ -898,4 +1232,5 @@ module.exports = {
   getMyOrders,
   createCashOrder,
   getAllOrders,
+  createStripePayment
 };
