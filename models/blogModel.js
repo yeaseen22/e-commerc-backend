@@ -42,10 +42,12 @@ const blogSchema = new mongoose.Schema(
       type: String,
       default: "Admin",
     },
-    images: {
-      type: String,
-      default: 'https://www.shutterstock.com/image-vector/blog-icon-vector-260nw-1148886686.jpg',
-    }
+    images: [
+      {
+        public_id: { type: String, required: true },
+        url: { type: String, required: true },
+      },
+    ],
   },
   {
     toJSON: {

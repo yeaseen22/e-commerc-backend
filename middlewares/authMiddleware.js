@@ -6,8 +6,10 @@ const asyncHandler = require('express-async-handler')
 // #region auth Checke Middleware
 const authMiddleware = asyncHandler(async (req, res, next)  => {
     let token;
+    
     if(req?.headers?.authorization?.startsWith('Bearer')){
         token = req.headers.authorization.split(' ')[1];
+
         try{
             if(token){
                 const decode = jwt.verify(token, process.env.JWT_SECRET);
@@ -15,9 +17,11 @@ const authMiddleware = asyncHandler(async (req, res, next)  => {
                 req.user = user;
                 next();
             }
+
         } catch(error){
             throw new Error('not Authorized token expired, please login again')
         }
+
     } else{
         throw new Error('There is no token attached to header')
     }

@@ -16,12 +16,14 @@ const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 
 // #region Create User
 const createUser = asyncHandler(async (req, res) => {
-  const email = req.body.email;
+  const email = req?.body?.email;
   const findUser = await User.findOne({ email: email });
+
   if (!findUser) {
     /* #region Create New User */
     const newUser = await User.create(req.body);
     res.json(newUser);
+
   } else {
     /* #region User Already Exists */
     throw new Error("User already exists");
@@ -31,20 +33,23 @@ const createUser = asyncHandler(async (req, res) => {
 // #region Login User
 const loginUserController = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
-  console.log(email, password);
-  // check if user exists or not
   const findUser = await User.findOne({ email });
+
+  // check if user exists or not
   if (findUser && (await findUser.isPasswordMatched(password))) {
     const refreshToken = await generateRefreshToken(findUser?._id);
+    
     const updateUser = await User.findByIdAndUpdate(
       findUser?._id,
       { refreshToken },
       { new: true }
     );
+
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
       maxAge: 72 * 60 * 60 * 1000,
     });
+
     res.json({
       _id: findUser?._id,
       firstName: findUser?.firstName,
@@ -53,6 +58,7 @@ const loginUserController = asyncHandler(async (req, res) => {
       mobile: findUser?.mobile,
       token: generateToken(findUser?._id),
     });
+
   } else {
     throw new Error("Invalid credentials");
   }
@@ -109,23 +115,41 @@ const handleRefreshToken = asyncHandler(async (req, res) => {
 const logout = asyncHandler(async (req, res) => {
   const cookie = req.cookies;
   if (!cookie?.refreshToken) throw new Error("No refresh token in cookies");
+
   const refreshToken = cookie.refreshToken;
   const user = await User.findOne({ refreshToken });
+
   if (!user) {
     res.clearCookie("refreshToken", {
       httpOnly: true,
       secure: true,
     });
+
     return res.sendStatus(204); //forbidden
   }
-  await User.findOneAndUpdate("refreshToken", {
+
+
+  // Check the Refresh token is there or not..
+  if (!refreshToken) {
+    throw new Error("Refresh token is not found!");
+  }
+
+  await User.findOneAndUpdate({ refreshToken }, {
     refreshToken: "",
   });
+
   res.clearCookie("refreshToken", {
     httpOnly: true,
     secure: true,
   });
-  res.sendStatus(204);
+
+  res.status(200).json({
+    message: 'User Loggedout successfully!',
+    user: {
+      _id: user?._id,
+      email: user?.email,
+    },
+  });
 });
 
 // #region Update A User
@@ -1011,44 +1035,15 @@ const getMyOrders = asyncHandler(async (req, res) => {
   }
 });
 
-// const getAllOrders = asyncHandler(async (req, res) => {
-//   try {
-//     // Retrieve the user's orders, populating product details
-//     const allUserOrders = await Order.find()
-//       .populate("orderItems.product")
-//       .populate("orderItems.color")
-//       .populate("orderItems.orderby") // Populate user details for each product
-//       .exec();
-
-//     // Check if any orders were found
-//     if (!allUserOrders || allUserOrders.length === 0) {
-//       return res
-//         .status(404)
-//         .json({ success: false, message: "No orders found." });
-//     }
-
-//     // Send the orders in the response
-//     res.status(200).json(allUserOrders);
-//   } catch (error) {
-//     console.error("Error fetching orders:", error); // Log any errors
-//     res.status(500).json({ success: false, message: error.message });
-//   }
-// });
-
 const getAllOrders = asyncHandler(async (req, res) => {
   try {
-    // Retrieve all orders, populating nested fields in orderItems
+    // Retrieve the user's orders, populating product details
     const allUserOrders = await Order.find()
-      .populate({
-        path: "orderItems",
-        populate: [
-          { path: "orderby", select: "email firstName lastName" }, // Populate orderby field
-          { path: "product", select: "title price" }, // Populate product field
-          { path: "color", select: "title" }, // Populate color field
-        ],
-      })
-      .populate("user", "firstName lastName email") // Populate the main user field
-      .lean();
+      .populate("orderItems.product")
+      .populate("orderItems.color")
+      .populate("orderItems.orderby") // Populate user details for each product
+      .exec();
+
     // Check if any orders were found
     if (!allUserOrders || allUserOrders.length === 0) {
       return res
@@ -1057,14 +1052,43 @@ const getAllOrders = asyncHandler(async (req, res) => {
     }
 
     // Send the orders in the response
-    res.status(200).json({ success: true, orders: allUserOrders });
+    res.status(200).json(allUserOrders);
   } catch (error) {
-    console.error("Error fetching orders:", error.message); // Log any errors
-    res
-      .status(500)
-      .json({ success: false, message: "Failed to retrieve orders." });
+    console.error("Error fetching orders:", error); // Log any errors
+    res.status(500).json({ success: false, message: error.message });
   }
 });
+
+// const getAllOrders = asyncHandler(async (req, res) => {
+//   try {
+//     // Retrieve all orders, populating nested fields in orderItems
+//     const allUserOrders = await Order.find()
+//       .populate({
+//         path: "orderItems",
+//         populate: [
+//           { path: "orderby", select: "email firstName lastName" }, // Populate orderby field
+//           { path: "product", select: "title price" }, // Populate product field
+//           { path: "color", select: "title" }, // Populate color field
+//         ],
+//       })
+//       // .populate("user", "firstName lastName email") // Populate the main user field
+//       // .lean();
+//     // Check if any orders were found
+//     if (!allUserOrders || allUserOrders.length === 0) {
+//       return res
+//         .status(404)
+//         .json({ success: false, message: "No orders found." });
+//     }
+
+//     // Send the orders in the response
+//     res.status(200).json({ success: true, orders: allUserOrders });
+//   } catch (error) {
+//     console.error("Error fetching orders:", error.message); // Log any errors
+//     res
+//       .status(500)
+//       .json({ success: false, message: "Failed to retrieve orders." });
+//   }
+// });
 
 // region apply coupon
 // const applyCoupon = asyncHandler(async (req, res) => {
