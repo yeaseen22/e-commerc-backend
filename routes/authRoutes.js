@@ -43,8 +43,8 @@ router.post("/cart", authMiddleware, userCart);
 router.post("/cart/create-order", authMiddleware, createCashOrder);
 
 router.get("/all-users", getAllUsers);
-router.get("/get-orders", authMiddleware, getMyOrders);
 router.get("/get-allorders", authMiddleware, isAdmin, getAllOrders);
+router.post("/getorderbyuser/:id", authMiddleware, getMyOrders);
 router.post("/cash-order", createCashOrder); // For cash payments
 router.post("/stripe-order", createStripePayment);
 

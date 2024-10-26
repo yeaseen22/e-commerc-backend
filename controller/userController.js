@@ -38,7 +38,7 @@ const loginUserController = asyncHandler(async (req, res) => {
   // check if user exists or not
   if (findUser && (await findUser.isPasswordMatched(password))) {
     const refreshToken = await generateRefreshToken(findUser?._id);
-    
+
     const updateUser = await User.findByIdAndUpdate(
       findUser?._id,
       { refreshToken },
@@ -856,21 +856,21 @@ const updateProductQuantityFormCart = asyncHandler(async (req, res) => {
 
 const createCashOrder = async (req, res) => {
   try {
-      const { user, orderItems, totalPrice, shippingInfo } = req.body;
+    const { user, orderItems, totalPrice, shippingInfo } = req.body;
 
-      // Create a new order in the database
-      const newOrder = await Order.create({
-          user,
-          orderItems,
-          shippingInfo,
-          paymentInfo: { method: "Cash on Delivery" },
-          totalPrice,
-          orderStatus: "Pending",
-      });
+    // Create a new order in the database
+    const newOrder = await Order.create({
+      user,
+      orderItems,
+      shippingInfo,
+      paymentInfo: { method: "Cash on Delivery" },
+      totalPrice,
+      orderStatus: "Pending",
+    });
 
-      res.status(201).json({ success: true, order: newOrder });
+    res.status(201).json({ success: true, order: newOrder });
   } catch (error) {
-      res.status(400).json({ success: false, message: error.message });
+    res.status(400).json({ success: false, message: error.message });
   }
 };
 
@@ -975,7 +975,9 @@ const createStripePayment = async (req, res) => {
 // });
 
 // const getMyOrders = asyncHandler(async (req, res) => {
-//   const userId = req.user._id; // Assume user is authenticated and user ID is available
+//   const userId = req.params; // Assume user is authenticated and user ID is available
+//   console.log('user id',userId);
+  
 
 //   // Optional: Validate user ID if necessary
 //   if (!userId) {
@@ -1006,58 +1008,93 @@ const createStripePayment = async (req, res) => {
 // });
 
 const getMyOrders = asyncHandler(async (req, res) => {
-  const userId = req.user._id;
-  console.log("User ID:", userId);
+  // Extract user ID from params
+  const { id: userId } = req.params; // Destructure to get the userId directly
+  console.log('user id', userId);
+
+  // Validate user ID
+  if (!userId) {
+    return res.status(400).json({ success: false, message: "Invalid user ID." });
+  }
+
   try {
-    // Retrieve the user's orders, populating product details
-    const orders = await Order.find({ user: userId })
-      .populate("products.product")
-      .populate("orderby") // Populate product details
-      .exec(); // Execute the query
+    // Fetch orders associated with the user ID
+    const orders = await Order.find({ user: userId }).populate("orderItems.product");
 
-    console.log("Fetched Orders:", orders);
-
-    // Check if any orders were found
+    // Check if orders were found
     if (!orders || orders.length === 0) {
-      return res
-        .status(404)
-        .json({ success: false, message: "No orders found." });
+      return res.status(404).json({ success: false, message: "No orders found." });
     }
 
-    // Send the orders in the response
+    // Return the orders with a success status
     res.status(200).json({
       success: true,
-      orders, // Send the list of orders
+      orders,
     });
   } catch (error) {
-    console.error("Error fetching orders:", error); // Log any errors
-    res.status(500).json({ success: false, message: error.message });
+    // Log the error for debugging
+    console.error("Error fetching orders:", error);
+
+    // Send a 500 error response
+    res.status(500).json({ success: false, message: "Internal server error." });
   }
 });
 
-const getAllOrders = asyncHandler(async (req, res) => {
-  try {
-    // Retrieve the user's orders, populating product details
-    const allUserOrders = await Order.find()
-      .populate("orderItems.product")
-      .populate("orderItems.color")
-      .populate("orderItems.orderby") // Populate user details for each product
-      .exec();
 
-    // Check if any orders were found
-    if (!allUserOrders || allUserOrders.length === 0) {
-      return res
-        .status(404)
-        .json({ success: false, message: "No orders found." });
-    }
 
-    // Send the orders in the response
-    res.status(200).json(allUserOrders);
-  } catch (error) {
-    console.error("Error fetching orders:", error); // Log any errors
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
+// const getMyOrders = asyncHandler(async (req, res) => {
+//   const userId = req.user._id;
+//   console.log("User ID:", userId);
+//   try {
+//     // Retrieve the user's orders, populating product details
+//     const orders = await Order.find({ user: userId })
+//       .populate("products.product")
+//       .populate("orderby") // Populate product details
+//       .exec(); // Execute the query
+
+//     console.log("Fetched Orders:", orders);
+
+//     // Check if any orders were found
+//     if (!orders || orders.length === 0) {
+//       return res
+//         .status(404)
+//         .json({ success: false, message: "No orders found." });
+//     }
+
+//     // Send the orders in the response
+//     res.status(200).json({
+//       success: true,
+//       orders, // Send the list of orders
+//     });
+//   } catch (error) {
+//     console.error("Error fetching orders:", error); // Log any errors
+//     res.status(500).json({ success: false, message: error.message });
+//   }
+// });
+
+// const getAllOrders = asyncHandler(async (req, res) => {
+//   try {
+//     // Retrieve the user's orders, populating product details
+//     const allUserOrders = await Order.find()
+//       .populate("orderItems.product")
+//       .populate("orderItems.color")
+//       .populate("orderItems.orderby") // Populate user details for each product
+//       .exec();
+
+//     // Check if any orders were found
+//     if (!allUserOrders || allUserOrders.length === 0) {
+//       return res
+//         .status(404)
+//         .json({ success: false, message: "No orders found." });
+//     }
+
+//     // Send the orders in the response
+//     res.status(200).json(allUserOrders);
+//   } catch (error) {
+//     console.error("Error fetching orders:", error); // Log any errors
+//     res.status(500).json({ success: false, message: error.message });
+//   }
+// });
 
 // const getAllOrders = asyncHandler(async (req, res) => {
 //   try {
@@ -1089,6 +1126,40 @@ const getAllOrders = asyncHandler(async (req, res) => {
 //       .json({ success: false, message: "Failed to retrieve orders." });
 //   }
 // });
+
+
+const getAllOrders = asyncHandler(async (req, res) => {
+  try {
+    // Retrieve all orders, populating nested fields in products and user
+    const allUserOrders = await Order.find()
+      .populate({
+        path: "orderItems", // Populate the products field instead of orderItems
+        populate: [
+          { path: "product", select: "title price" }, // Populate product field
+          { path: "color", select: "title" }, // Populate color field
+        ],
+      })
+      .populate({ path: "user", select: "firstName lastName email" }) // Populate the user field
+      .lean(); // Convert to plain JavaScript object
+      const allUser = await User.find()
+
+    // Check if any orders were found
+    if (!allUserOrders || allUserOrders.length === 0) {
+      return res
+        .status(404)
+        .json({ success: false, message: "No orders found." });
+    }
+
+    // Send the orders in the response, including user information
+    res.status(200).json({ success: true, orders: allUserOrders });
+  } catch (error) {
+    console.error("Error fetching orders:", error.message); // Log any errors
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to retrieve orders." });
+  }
+});
+
 
 // region apply coupon
 // const applyCoupon = asyncHandler(async (req, res) => {
