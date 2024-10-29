@@ -977,7 +977,7 @@ const createStripePayment = async (req, res) => {
 // const getMyOrders = asyncHandler(async (req, res) => {
 //   const userId = req.params; // Assume user is authenticated and user ID is available
 //   console.log('user id',userId);
-  
+
 
 //   // Optional: Validate user ID if necessary
 //   if (!userId) {
@@ -1141,7 +1141,7 @@ const getAllOrders = asyncHandler(async (req, res) => {
       })
       .populate({ path: "user", select: "firstName lastName email" }) // Populate the user field
       .lean(); // Convert to plain JavaScript object
-      const allUser = await User.find()
+    const allUser = await User.find()
 
     // Check if any orders were found
     if (!allUserOrders || allUserOrders.length === 0) {
@@ -1295,6 +1295,253 @@ const getAllOrders = asyncHandler(async (req, res) => {
 //   }
 // });
 
+// const getMonthWiseOrderIncome = asyncHandler(async (req, res) => {
+//   let monthNames = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec']
+//   let d = new Date();
+//   let endDate = '';
+//   d.setDate(1);
+//   for(let i=0; i < 11; i++){
+//     d.setMonth(d.getMonth() - i);
+//     endDate = monthNames[d.getMonth()] + " " + d.getFullYear();
+//   }
+//   const data = await Order.aggregate([
+//     {
+//       $match: {
+//         createdAt: {
+//           $lte: new Date(),
+//           $gte: new Date(endDate),
+//         },
+//       },
+//       $group: {
+//         _id: {
+//           month: "$month"
+//         },
+//         amount: {
+//           $sum: "$totalAfterDiscount"
+//         }
+//       }
+//     }
+//   ])
+//   res.json(data);
+// })
+
+// const getMonthWiseOrderIncome = asyncHandler(async (req, res) => {
+//   let d = new Date();
+
+//   // Get the start date for the last 12 months (including the current month)
+//   let startDate = new Date(d.getFullYear(), d.getMonth() - 11, 1); // 11 months ago from the current month
+
+//   const data = await Order.aggregate([
+//     {
+//       $match: {
+//         createdAt: {
+//           $gte: startDate, // Only consider orders from the last 12 months
+//           $lte: new Date(), // Up to the current date
+//         },
+//       },
+//     },
+//     {
+//       $group: {
+//         _id: {
+//           month: { $month: "$createdAt" }, // Group by month
+//           year: { $year: "$createdAt" },   // Group by year
+//         },
+//         totalIncome: {
+//           $sum: "$totalIncome", // Sum of total income
+//         },
+//       },
+//     },
+//     {
+//       $project: {
+//         _id: 0, // Exclude the default _id field
+//         month: "$_id.month",
+//         year: "$_id.year",
+//         totalIncome: "$totalIncome", // Rename for clarity
+//       },
+//     },
+//     {
+//       $sort: {
+//         year: 1, // Sort by year
+//         month: 1 // Sort by month
+//       }
+//     }
+//   ]);
+
+//   // Prepare an array for all months of the current year
+//   const months = Array.from({ length: 12 }, (_, index) => {
+//     return { month: index + 1, year: d.getFullYear(), totalIncome: 0 }; // Initialize with zero income
+//   });
+
+//   // Populate the months array with data from the aggregation
+//   data.forEach(entry => {
+//     const monthIndex = entry.month - 1; // Adjust for zero-based index
+//     const yearIndex = months.findIndex(m => m.month === entry.month && m.year === entry.year);
+//     if (yearIndex !== -1) {
+//       months[yearIndex].totalIncome = entry.totalIncome; // Update the totalIncome
+//     }
+//   });
+
+//   res.json(months);
+// });
+
+
+const getMonthWiseOrderIncome = asyncHandler(async (req, res) => {
+  let d = new Date();
+
+  // Get the start date for the last 12 months (including the current month)
+  let startDate = new Date(d.getFullYear(), d.getMonth() - 11, 1); // 11 months ago from the current month
+
+  const data = await Order.aggregate([
+    {
+      $match: {
+        createdAt: {
+          $gte: startDate, // Only consider orders from the last 12 months
+          $lte: new Date(), // Up to the current date
+        },
+      },
+    },
+    {
+      $group: {
+        _id: {
+          month: { $month: "$createdAt" }, // Group by month
+          year: { $year: "$createdAt" },   // Group by year
+        },
+        totalIncome: { $sum: "$totalPrice" }, // Sum of total price as income
+        orderCount: { $sum: 1 }, // Count the number of orders in each month
+      },
+    },
+    {
+      $match: {
+        orderCount: { $gt: 0 }, // Filter out months with zero orders
+      },
+    },
+    {
+      $project: {
+        _id: 0, // Exclude the default _id field
+        month: "$_id.month",
+        year: "$_id.year",
+        totalIncome: "$totalIncome",
+        orderCount: "$orderCount",
+      },
+    },
+    {
+      $sort: {
+        year: 1, // Sort by year
+        month: 1, // Sort by month
+      },
+    },
+  ]);
+
+  res.json(data);
+});
+
+
+const getMonthWiseOrderCount = asyncHandler(async (req, res) => {
+  let d = new Date();
+
+  // Get the start date for the last 12 months (including the current month)
+  let startDate = new Date(d.getFullYear(), d.getMonth() - 11, 1); // 11 months ago from the current month
+
+  const data = await Order.aggregate([
+    {
+      $match: {
+        createdAt: {
+          $gte: startDate, // Only consider orders from the last 12 months
+          $lte: new Date(), // Up to the current date
+        },
+      },
+    },
+    {
+      $group: {
+        _id: {
+          month: { $month: "$createdAt" }, // Group by month
+          year: { $year: "$createdAt" },   // Group by year
+        },
+        orderCount: {
+          $sum: 1, // Count the number of orders
+        },
+      },
+    },
+    {
+      $project: {
+        _id: 0, // Exclude the default _id field
+        month: "$_id.month",
+        year: "$_id.year",
+        orderCount: "$orderCount", // Rename for clarity
+      },
+    },
+    {
+      $sort: {
+        year: 1, // Sort by year
+        month: 1 // Sort by month
+      }
+    }
+  ]);
+
+  // Prepare an array for all months of the current year
+  const months = Array.from({ length: 12 }, (_, index) => {
+    return { month: index + 1, year: d.getFullYear(), orderCount: 0 }; // Initialize with zero count
+  });
+
+  // Populate the months array with data from the aggregation
+  data.forEach(entry => {
+    const monthIndex = entry.month - 1; // Adjust for zero-based index
+    const yearIndex = months.findIndex(m => m.month === entry.month && m.year === entry.year);
+    if (yearIndex !== -1) {
+      months[yearIndex].orderCount = entry.orderCount; // Update the orderCount
+    }
+  });
+
+  res.json(months);
+});
+
+
+const getCurrentYearTotalOrderIncome = asyncHandler(async (req, res) => {
+  const currentYear = new Date().getFullYear();
+
+  const data = await Order.aggregate([
+    {
+      $match: {
+        $expr: {
+          $eq: [{ $year: "$createdAt" }, currentYear], // Match orders for the current year
+        },
+      },
+    },
+    {
+      $group: {
+        _id: null, // No specific grouping
+        totalOrders: { $sum: 1 }, // Count the total number of orders
+        totalAmountAfterDiscount: {
+          $sum: {
+            $cond: {
+              if: { $gt: ["$discountRate", 0] }, // Apply only if there's a discount
+              then: { $multiply: ["$totalPrice", { $subtract: [1, "$discountRate"] }] },
+              else: "$totalPrice", // No discount, use totalPrice directly
+            },
+          },
+        },
+      },
+    },
+    {
+      $project: {
+        _id: 0, // Exclude the default _id field
+        totalOrders: 1,
+        totalAmountAfterDiscount: 1, // Ensure calculated amount is included
+      },
+    },
+  ]);
+
+  // Handle cases where there are no orders for the current year
+  const result = data.length > 0 ? data[0] : { totalOrders: 0, totalAmountAfterDiscount: 0 };
+
+  res.json(result);
+});
+
+
+
+
+
+
 module.exports = {
   createUser,
   loginUserController,
@@ -1327,5 +1574,8 @@ module.exports = {
   getMyOrders,
   createCashOrder,
   getAllOrders,
-  createStripePayment
+  createStripePayment,
+  getMonthWiseOrderIncome,
+  getMonthWiseOrderCount,
+  getCurrentYearTotalOrderIncome
 };

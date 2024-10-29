@@ -23,40 +23,44 @@ const orderSchema = new mongoose.Schema(
     },
     orderItems: [
       {
-        orderby: { 
-          type: mongoose.Schema.Types.ObjectId, 
-          ref: "User", 
-          required: true 
+        orderby: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
+          required: true
         },
-        product: { 
-          type: mongoose.Schema.Types.ObjectId, 
-          ref: "Product", 
-          required: true 
+        product: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "Product",
+          required: true
         },
-        color: { 
-          type: mongoose.Schema.Types.ObjectId, 
-          ref: "Color", 
-          required: true 
+        color: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "Color",
+          required: true
         },
         quantity: { type: Number, required: true },
         price: { type: Number, required: true },
-        
+
       },
     ],
-    paidAt: { 
-      type: Date, 
-      default: Date.now() 
+    paidAt: {
+      type: Date,
+      default: Date.now()
     },
-    totalPrice: { 
-      type: Number, 
-      required: true 
+    totalPrice: {
+      type: Number,
+      required: true
     },
-    totalPriceAfterDiscount: { 
-      type: Number 
+    discountRate: {
+      type: Number,
+      default: 0 // Percentage discount, e.g., 0.10 for 10%
     },
-    orderStatus: {
-      type: String,
-      default: "Ordered",
+    discountAmount: {
+      type: Number,
+      default: 0 // Fixed amount discount
+    },
+    totalPriceAfterDiscount: {
+      type: Number
     },
   },
   { timestamps: true }
