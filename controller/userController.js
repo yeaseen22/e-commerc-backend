@@ -1019,7 +1019,7 @@ const getMyOrders = asyncHandler(async (req, res) => {
 
   try {
     // Fetch orders associated with the user ID
-    const orders = await Order.find({ user: userId }).populate("orderItems.product");
+    const orders = await Order.find({ user: userId }).populate("orderItems.product").populate("orderStatus");
 
     // Check if orders were found
     if (!orders || orders.length === 0) {
@@ -1039,6 +1039,27 @@ const getMyOrders = asyncHandler(async (req, res) => {
     res.status(500).json({ success: false, message: "Internal server error." });
   }
 });
+
+const updateOrder = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+
+  try {
+    const updatedOrder = await Order.findById(
+      id
+    );
+    updatedOrder.orderStatus = status;
+    await updatedOrder.save();
+
+    res.json({
+      success: true,
+      updatedOrder,
+    });
+  } catch (error) {
+    throw new Error(error);
+  }
+})
+
 
 
 
@@ -1128,35 +1149,175 @@ const getMyOrders = asyncHandler(async (req, res) => {
 // });
 
 
+// const getAllOrders = asyncHandler(async (req, res) => {
+//   try {
+//     // Retrieve all orders, populating nested fields in products and user
+//     const allUserOrders = await Order.find()
+//       .populate({
+//         path: "orderItems", // Populate the products field instead of orderItems
+//         populate: [
+//           { path: "product", select: "title price" }, // Populate product field
+//           { path: "color", select: "title" }, // Populate color field
+//         ],
+//       })
+//       .populate({ path: "user", select: "firstName lastName email" }) // Populate the user field
+//       .lean(); // Convert to plain JavaScript object
+//     const allUser = await User.find()
+
+//     // Check if any orders were found
+//     if (!allUserOrders || allUserOrders.length === 0) {
+//       return res
+//         .status(404)
+//         .json({ success: false, message: "No orders found." });
+//     }
+
+//     // Send the orders in the response, including user information
+//     res.status(200).json({ success: true, orders: allUserOrders });
+//   } catch (error) {
+//     console.error("Error fetching orders:", error.message); // Log any errors
+//     res
+//       .status(500)
+//       .json({ success: false, message: "Failed to retrieve orders." });
+//   }
+// });
+
+
+// const getAllOrders = asyncHandler(async (req, res) => {
+//   try {
+//     // Retrieve all orders, populating nested fields in products and user
+//     const allUserOrders = await Order.find()
+//     .populate({
+//       path: "orderItems",
+//       populate: { path: "product", select: "title price" }
+//     })
+//     .populate({
+//       path: "orderItems",
+//       populate: { path: "color", select: "title" }
+//     })
+//     .populate({ path: "user", select: "firstName lastName email" })
+//     .lean(); // Convert to plain JavaScript object
+
+//     // Check if any orders were found
+//     if (!allUserOrders || allUserOrders.length === 0) {
+//       return res
+//         .status(404)
+//         .json({ success: false, message: "No orders found." });
+//     }
+
+//     // Add total count, status, and total amount after discount for each order
+//     const enrichedOrders = allUserOrders.map(order => {
+//       // Calculate total product count by summing up quantities in orderItems
+//       const productCount = order.orderItems.reduce((count, item) => count + (item.quantity || 1), 0);
+
+//       // Calculate the total price after applying the discount
+//       const totalPriceAfterDiscount = order.totalPrice - (order.discountAmount || 0);
+
+//       return {
+//         ...order,
+//         productCount,
+//         orderStatus: order.orderStatus || "Pending", // Assuming default status
+//         totalPriceAfterDiscount,
+//       };
+//     });
+
+//     // Send the enriched orders in the response
+//     res.status(200).json({ success: true, orders: enrichedOrders });
+//   } catch (error) {
+//     console.error("Error fetching orders:", error.message); // Log any errors
+//     res
+//       .status(500)
+//       .json({ success: false, message: "Failed to retrieve orders." });
+//   }
+// });
+
+// const getAllOrders = asyncHandler(async (req, res) => {
+//   try {
+//     // Retrieve all orders, populating nested fields in orderItems and user
+//     const allUserOrders = await Order.find()
+//       .populate({
+//         path: "orderItems",
+//         populate: [
+//           { path: "product", select: "title price" },
+//           { path: "color", select: "title" },
+//         ],
+//       })
+//       .populate({ path: "user", select: "firstName lastName email" })
+//       .lean(); // Convert to plain JavaScript object
+
+//     // Check if any orders were found
+//     if (!allUserOrders || allUserOrders.length === 0) {
+//       return res
+//         .status(404)
+//         .json({ success: false, message: "No orders found." });
+//     }
+
+
+//     // Add total count, status, and total amount after discount for each order
+//     const enrichedOrders = allUserOrders.map(order => {
+//       // Calculate total product count by summing up quantities in orderItems
+//       const productCount = order.orderItems?.reduce((count, item) => {
+//         return count + (item.quantity || 0);
+//       }, 0);
+
+//       // Calculate the total price after applying the discount
+//       const totalPriceAfterDiscount = order.totalPrice - (order.discountAmount || 0);
+
+//       return {
+//         ...order,
+//         productCount,
+//         orderStatus: order.orderStatus || "Pending", // Assuming default status
+//         totalPriceAfterDiscount,
+//       };
+//     });
+
+//     // Send the enriched orders in the response
+//     res.status(200).json({ success: true, orders: enrichedOrders });
+//   } catch (error) {
+//     console.error("Error fetching orders:", error.message); // Log any errors
+//     res
+//       .status(500)
+//       .json({ success: false, message: "Failed to retrieve orders." });
+//   }
+// });
+
 const getAllOrders = asyncHandler(async (req, res) => {
   try {
-    // Retrieve all orders, populating nested fields in products and user
+    // Retrieve all orders, populating `orderItems` and nested fields in `orderItems` and `user`
     const allUserOrders = await Order.find()
       .populate({
-        path: "orderItems", // Populate the products field instead of orderItems
-        populate: [
-          { path: "product", select: "title price" }, // Populate product field
-          { path: "color", select: "title" }, // Populate color field
-        ],
+        path: "orderItems.product", // Populate product details within orderItems
+        select: "title price"
       })
-      .populate({ path: "user", select: "firstName lastName email" }) // Populate the user field
-      .lean(); // Convert to plain JavaScript object
-    const allUser = await User.find()
+      .populate({
+        path: "orderItems.color", // Populate color details within orderItems
+        select: "title"
+      })
+      .populate({ path: "user", select: "firstName lastName email" })
+      .lean(); // Convert to plain JavaScript object for easier manipulation
 
     // Check if any orders were found
     if (!allUserOrders || allUserOrders.length === 0) {
-      return res
-        .status(404)
-        .json({ success: false, message: "No orders found." });
+      return res.status(404).json({ success: false, message: "No orders found." });
     }
 
-    // Send the orders in the response, including user information
-    res.status(200).json({ success: true, orders: allUserOrders });
+    // Add calculated fields: `productCount`, `orderStatus`, and `totalPriceAfterDiscount`
+    const enrichedOrders = allUserOrders.map(order => {
+      const productCount = order.orderItems?.reduce((count, item) => count + (item.quantity || 0), 0) || 0;
+      const totalPriceAfterDiscount = order.totalPrice - (order.discountAmount || 0);
+
+      return {
+        ...order,
+        productCount,
+        orderStatus: order.orderStatus || "Pending", // Default status if not set
+        totalPriceAfterDiscount,
+      };
+    });
+
+    // Send the enriched orders in the response
+    res.status(200).json({ success: true, orders: enrichedOrders });
   } catch (error) {
     console.error("Error fetching orders:", error.message); // Log any errors
-    res
-      .status(500)
-      .json({ success: false, message: "Failed to retrieve orders." });
+    res.status(500).json({ success: false, message: "Failed to retrieve orders." });
   }
 });
 
@@ -1295,94 +1456,6 @@ const getAllOrders = asyncHandler(async (req, res) => {
 //   }
 // });
 
-// const getMonthWiseOrderIncome = asyncHandler(async (req, res) => {
-//   let monthNames = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec']
-//   let d = new Date();
-//   let endDate = '';
-//   d.setDate(1);
-//   for(let i=0; i < 11; i++){
-//     d.setMonth(d.getMonth() - i);
-//     endDate = monthNames[d.getMonth()] + " " + d.getFullYear();
-//   }
-//   const data = await Order.aggregate([
-//     {
-//       $match: {
-//         createdAt: {
-//           $lte: new Date(),
-//           $gte: new Date(endDate),
-//         },
-//       },
-//       $group: {
-//         _id: {
-//           month: "$month"
-//         },
-//         amount: {
-//           $sum: "$totalAfterDiscount"
-//         }
-//       }
-//     }
-//   ])
-//   res.json(data);
-// })
-
-// const getMonthWiseOrderIncome = asyncHandler(async (req, res) => {
-//   let d = new Date();
-
-//   // Get the start date for the last 12 months (including the current month)
-//   let startDate = new Date(d.getFullYear(), d.getMonth() - 11, 1); // 11 months ago from the current month
-
-//   const data = await Order.aggregate([
-//     {
-//       $match: {
-//         createdAt: {
-//           $gte: startDate, // Only consider orders from the last 12 months
-//           $lte: new Date(), // Up to the current date
-//         },
-//       },
-//     },
-//     {
-//       $group: {
-//         _id: {
-//           month: { $month: "$createdAt" }, // Group by month
-//           year: { $year: "$createdAt" },   // Group by year
-//         },
-//         totalIncome: {
-//           $sum: "$totalIncome", // Sum of total income
-//         },
-//       },
-//     },
-//     {
-//       $project: {
-//         _id: 0, // Exclude the default _id field
-//         month: "$_id.month",
-//         year: "$_id.year",
-//         totalIncome: "$totalIncome", // Rename for clarity
-//       },
-//     },
-//     {
-//       $sort: {
-//         year: 1, // Sort by year
-//         month: 1 // Sort by month
-//       }
-//     }
-//   ]);
-
-//   // Prepare an array for all months of the current year
-//   const months = Array.from({ length: 12 }, (_, index) => {
-//     return { month: index + 1, year: d.getFullYear(), totalIncome: 0 }; // Initialize with zero income
-//   });
-
-//   // Populate the months array with data from the aggregation
-//   data.forEach(entry => {
-//     const monthIndex = entry.month - 1; // Adjust for zero-based index
-//     const yearIndex = months.findIndex(m => m.month === entry.month && m.year === entry.year);
-//     if (yearIndex !== -1) {
-//       months[yearIndex].totalIncome = entry.totalIncome; // Update the totalIncome
-//     }
-//   });
-
-//   res.json(months);
-// });
 
 
 const getMonthWiseOrderIncome = asyncHandler(async (req, res) => {
@@ -1577,5 +1650,6 @@ module.exports = {
   createStripePayment,
   getMonthWiseOrderIncome,
   getMonthWiseOrderCount,
-  getCurrentYearTotalOrderIncome
+  getCurrentYearTotalOrderIncome,
+  updateOrder
 };
