@@ -50,7 +50,7 @@ router.get("/all-users", getAllUsers);
 router.get("/get-allorders", authMiddleware, isAdmin, getAllOrders);
 router.post("/getorderbyuser/:id", authMiddleware, getMyOrders);
 router.put("/updateOrder/:id", authMiddleware, isAdmin, updateOrder);
-router.post("/cash-order", createCashOrder); // For cash payments
+router.post("/cash-order", createCashOrder);
 router.post("/stripe-order", createStripePayment);
 
 // router.get("/get-orders", authMiddleware, getOrders);

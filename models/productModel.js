@@ -1,7 +1,6 @@
 const mongoose = require("mongoose");
 
 const productSchema = new mongoose.Schema(
-  {
     // title: {
 
 
@@ -49,33 +48,35 @@ const productSchema = new mongoose.Schema(
     // },
     // tags: String,
 
-    title: { type: String, required: true },
-    description: { type: String, required: true },
-    price: { type: Number, required: true },
-    brand: { type: String, required: true },
-    category: { type: String, required: true },
-    color: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Color' }],  // Array of ObjectIds
-    images: [
-      {
-        public_id: { type: String, required: true },
-        url: { type: String, required: true },
+    {
+      title: { type: String, required: true },
+      description: { type: String, required: true },
+      price: { type: Number, required: true },
+      brand: { type: String, required: true },
+      category: { type: String, required: true },
+      color: [{ type: String }], // Change to String array
+      images: [
+        {
+          public_id: { type: String, required: true },
+          url: { type: String, required: true },
+        },
+      ],
+      quantity: { type: Number, required: true },
+      tags: { type: [String], required: true }, // Ensure tags is an array of strings
+      slug: { type: String, unique: true, required: true }, // Ensure slug is unique and required
+      ratings: [
+        {
+          star: Number,
+          comment: String,
+          postedby: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+        },
+      ],
+      totalrating: {
+        type: Number,
+        default: 0,
       },
-    ],
-    quantity: { type: Number, required: true },
-    tags: { type: String, required: true },
-    ratings: [
-      {
-        star: Number,
-        comment: String,
-        postedby: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
-      },
-    ],
-    totalrating: {
-      type: String,
-      default: 0,
     },
-  },
-  { timestamps: true }
+    { timestamps: true }
 );
 
 module.exports = mongoose.model("Product", productSchema);

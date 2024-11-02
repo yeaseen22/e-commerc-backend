@@ -4,20 +4,60 @@ const asyncHandler = require("express-async-handler");
 const slugify = require("slugify");
 const validateMongoId = require("../utils/validateMongodbId");
 const cloudinaryUploadImg = require("../utils/cloudinary");
-const fs = require("fs")
+const fs = require("fs");
+const { log } = require("console");
 
 // #region create a product
 const createProduct = asyncHandler(async (req, res) => {
   try {
-    if (req.body.title) {
-      req.body.slug = slugify(req.body.title);
+    // Log the incoming request body
+    console.log("Request body:", req.body);
+
+    // Ensure title is provided
+    if (!req.body.title) {
+      return res.status(400).json({ message: "Title is required to generate a slug." });
     }
+
+    // Generate slug from the title
+    req.body.slug = slugify(req.body.title);
+
+    // Log the generated slug
+    console.log("Generated slug:", req.body.slug);
+
+    // Check for duplicate slug in the database
+    let existingProduct = await Product.findOne({ slug: req.body.slug });
+
+    // If the slug exists, append a timestamp
+    if (existingProduct) {
+      req.body.slug = `${req.body.slug}-${Date.now()}`;
+      console.log("Updated slug to avoid duplicates:", req.body.slug);
+    }
+
+    // Create the new product
     const newProduct = await Product.create(req.body);
-    res.json(newProduct);
+    res.status(201).json(newProduct);
   } catch (error) {
-    throw new Error(error);
+    console.error("Error creating product:", error); // Log error details
+    res.status(500).json({ message: error.message });
   }
 });
+
+
+
+
+
+
+// const createProduct = asyncHandler(async (req, res) => {
+//   try {
+//     if (req.body.title) {
+//       req.body.slug = slugify(req.body.title);
+//     }
+//     const newProduct = await Product.create(req.body);
+//     res.json(newProduct);
+//   } catch (error) {
+//     throw new Error(error);
+//   }
+// });
 
 // #region update a product
 const updateProduct = asyncHandler(async (req, res) => {
