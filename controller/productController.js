@@ -87,12 +87,12 @@ const updateProduct = asyncHandler(async (req, res) => {
 
 // #region delete product
 const deleteProduct = asyncHandler(async (req, res) => {
-  const {id} = req.params;
+  const { id } = req.params;
   validateMongoId(id)
   try {
     const deleteProduct = await Product.findOneAndDelete({ _id: id });
-    console.log('from delete controller',deleteProduct);
-    
+    console.log('from delete controller', deleteProduct);
+
     res.json(deleteProduct);
   } catch (error) {
     throw new Error(error);
@@ -113,49 +113,191 @@ const getAProduct = asyncHandler(async (req, res) => {
 // #region get all product
 const getAllProducts = asyncHandler(async (req, res) => {
   try {
-    // filtering
+    // Create a query object from the request query parameters
     const queryObj = { ...req.query };
     const excludeFields = ["page", "sort", "limit", "fields"];
+
+    // Remove excluded fields from query parameters
     excludeFields.forEach((el) => delete queryObj[el]);
 
+    // Convert specific fields to MongoDB-compatible operators
     let queryStr = JSON.stringify(queryObj);
     queryStr = queryStr.replace(/\b(gte|gt|lte|lt)\b/g, (match) => `$${match}`);
 
-    let query = Product.find(JSON.parse(queryStr));
+    // Parse the query object back from a string to JSON
+    let parsedQuery = JSON.parse(queryStr);
 
-    // sorting
+    // Apply case-insensitive regex to specific fields if they exist
+    if (parsedQuery.category) {
+      parsedQuery.category = { $regex: new RegExp(parsedQuery.category, 'i') }; // Case-insensitive
+    }
+    if (parsedQuery.brand) {
+      parsedQuery.brand = { $regex: new RegExp(parsedQuery.brand, 'i') }; // Case-insensitive for brand as well
+    }
+
+    // Build the query for finding products
+    let query = Product.find(parsedQuery);
+
+    // Sorting logic
     if (req.query.sort) {
       const sortBy = req.query.sort.split(",").join(" ");
       query = query.sort(sortBy);
     } else {
+      // Default sort by creation date
       query = query.sort("-createdAt");
     }
 
-    // limiting the fields
+    // Limiting the fields returned in the response
     if (req.query.fields) {
       const fields = req.query.fields.split(",").join(" ");
       query = query.select(fields);
     } else {
+      // Default to excluding the __v field
       query = query.select("-__v");
     }
 
-    //pagination
-
-    const page = req.query.page;
-    const limit = req.query.limit;
+    // Pagination logic
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
     query = query.skip(skip).limit(limit);
+
     if (req.query.page) {
       const productCount = await Product.countDocuments();
-      if (skip >= productCount) throw new Error("This Page does not exists");
+      if (skip >= productCount) {
+        return res.status(404).json({ message: "This page does not exist" });
+      }
     }
 
-    const product = await query;
-    res.json(product);
+    // Execute the query and return products
+    const products = await query;
+    return res.status(200).json(products);
   } catch (error) {
-    throw new Error(error);
+    console.error("Error fetching products:", error);
+    return res.status(500).json({ message: "Internal server error" });
   }
 });
+
+
+// const getAllProducts = asyncHandler(async (req, res) => {
+//   try {
+//     // Create a copy of the query object and remove excluded fields
+//     const queryObj = { ...req.query };
+//     const excludeFields = ["page", "sort", "limit", "fields"];
+//     excludeFields.forEach((el) => delete queryObj[el]);
+
+//     // Convert query object for MongoDB operators (gte, gt, etc.)
+//     let queryStr = JSON.stringify(queryObj);
+//     queryStr = queryStr.replace(/\b(gte|gt|lte|lt)\b/g, (match) => `$${match}`);
+
+//     // Build the query for fetching products
+//     let query = Product.find(JSON.parse(queryStr));
+
+//     // Apply sorting, defaulting to createdAt if no sort parameter
+//     if (req.query.sort) {
+//       const sortBy = req.query.sort.split(",").join(" ");
+//       query = query.sort(sortBy);
+//     } else {
+//       query = query.sort("-createdAt");
+//     }
+
+//     // Limiting fields in the response, excluding __v by default
+//     if (req.query.fields) {
+//       const fields = req.query.fields.split(",").join(" ");
+//       query = query.select(fields);
+//     } else {
+//       query = query.select("-__v");
+//     }
+
+//     // Implement pagination with defaults
+//     const page = parseInt(req.query.page) || 1;
+//     const limit = parseInt(req.query.limit) || 10;
+//     const skip = (page - 1) * limit;
+//     query = query.skip(skip).limit(limit);
+
+//     // Handle invalid page requests
+//     if (req.query.page) {
+//       const productCount = await Product.countDocuments();
+//       if (skip >= productCount) {
+//         return res.status(404).json({ message: "This page does not exist" });
+//       }
+//     }
+
+//     // Execute the query and return the product data
+//     const products = await query;
+//     return res.status(200).json(products);
+//   } catch (error) {
+//     console.error("Error fetching products:", error);
+//     return res.status(500).json({ message: "Internal server error" });
+//   }
+// });
+
+
+// const getAllProducts = asyncHandler(async (req, res) => {
+//   try {
+//     // filtering
+//     const queryObj = { ...req.query };
+//     const excludeFields = ["page", "sort", "limit", "fields"];
+//     excludeFields.forEach((el) => delete queryObj[el]);
+
+//     let queryStr = JSON.stringify(queryObj);
+//     queryStr = queryStr.replace(/\b(gte|gt|lte|lt)\b/g, (match) => `$${match}`);
+
+//     let query = Product.find(JSON.parse(queryStr));
+
+//     // sorting
+//     if (req.query.sort) {
+//       const sortBy = req.query.sort.split(",").join(" ");
+//       query = query.sort(sortBy);
+//     } else {
+//       query = query.sort("-createdAt");
+//     }
+
+//     // limiting the fields
+//     if (req.query.fields) {
+//       const fields = req.query.fields.split(",").join(" ");
+//       query = query.select(fields);
+//     } else {
+//       query = query.select("-__v");
+//     }
+
+//     //pagination
+
+//     const page = req.query.page;
+//     const limit = req.query.limit;
+//     const skip = (page - 1) * limit;
+//     query = query.skip(skip).limit(limit);
+//     if (req.query.page) {
+//       const productCount = await Product.countDocuments();
+//       if (skip >= productCount) throw new Error("This Page does not exists");
+//     }
+
+//     const product = await query;
+//     res.json(product);
+//   } catch (error) {
+//     throw new Error(error);
+//   }
+// });
+
+// const getAllProducts = asyncHandler(async (req, res) => {
+//   try {
+//     const queryObj = { ...req.query };
+//     const excludeFields = ["page", "sort", "limit", "fields"];
+//     excludeFields.forEach((el) => delete queryObj[el]);
+
+//     let queryStr = JSON.stringify(queryObj);
+//     queryStr = queryStr.replace(/\b(gte|gt|lte|lt)\b/g, (match) => `$${match}`);
+//     const query = Product.find(JSON.parse(queryStr));
+
+//     // Execute the query and return products
+//     const products = await query;
+//     console.log("Products fetched:", products);
+//     return res.status(200).json(products);
+//   } catch (error) {
+//     console.error("Error fetching products:", error);
+//     return res.status(500).json({ message: "Internal server error" });
+//   }
+// });
 
 // #region add to wishlist
 const addToWishlist = asyncHandler(async (req, res) => {
